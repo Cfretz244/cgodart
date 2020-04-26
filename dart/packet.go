@@ -71,6 +71,14 @@ func int2bool(val C.int) bool {
   }
 }
 
+func bool2int(val bool) C.int {
+  if val {
+    return 1
+  } else {
+    return 0
+  }
+}
+
 func isOK(err C.dart_err_t) bool {
   return err == C.DART_NO_ERROR;
 }
