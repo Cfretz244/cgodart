@@ -4,8 +4,8 @@ package dart
 #cgo LDFLAGS: -ldart_abi
 #include <dart/abi.h>
 
-static inline int dart_type_to_int(dart_type_t type) {
-  return (int) type;
+static inline int dart_type_as_int(dart_packet_t const* pkt) {
+  return (int) dart_get_type(pkt);
 }
 */
 import "C"
@@ -80,7 +80,7 @@ func bool2int(val bool) C.int {
 }
 
 func isOK(err C.dart_err_t) bool {
-  return err == C.DART_NO_ERROR;
+  return err == C.DART_NO_ERROR
 }
 
 func grabError() error {
@@ -270,7 +270,11 @@ func (pkt *Packet) IsFinalized() bool {
 }
 
 func (pkt *Packet) GetType() int {
-  return int(C.dart_type_to_int(C.dart_get_type(pkt.rawPtr())))
+  return int(C.dart_type_as_int(&pkt.cbuf))
+}
+
+func (pkt *Packet) Refcount() uint64 {
+  return uint64(C.dart_refcount(pkt.rawPtr()))
 }
 
 func (pkt *Packet) Size() (int, error) {
@@ -289,6 +293,17 @@ func (pkt *Packet) Size() (int, error) {
     size = 0
   }
   return int(size), err
+}
+
+func (pkt *Packet) Clear() error {
+  if pkt.IsObject() {
+    C.dart_obj_clear(pkt.rawPtr())
+  } else if pkt.IsArray() {
+    C.dart_arr_clear(pkt.rawPtr())
+  } else {
+    return errors.New("dart::packet is not an aggregate, and has no values to clear")
+  }
+  return nil
 }
 
 func (pkt *Packet) Equals(other *Packet) bool {

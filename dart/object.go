@@ -84,11 +84,19 @@ func (pkt *Packet) InsertNullField(key string) error {
 
 func (pkt *Packet) RemoveField(key string) error {
   return withTLS(func () C.dart_err_t {
-    return C.dart_obj_erase_len(pkt.rawPtr(), C._GoStringPtr(key), C._GoStringLen(key))
+    return C.dart_obj_erase_len(
+      pkt.rawPtr(),
+      C._GoStringPtr(key),
+      C._GoStringLen(key),
+    )
   })
 }
 
 func (pkt *Packet) HasField(key string) bool {
-  has := C.dart_obj_has_key_len(pkt.rawPtr(), C._GoStringPtr(key), C._GoStringLen(key))
+  has := C.dart_obj_has_key_len(
+    pkt.rawPtr(),
+    C._GoStringPtr(key),
+    C._GoStringLen(key),
+  )
   return int2bool(has)
 }
