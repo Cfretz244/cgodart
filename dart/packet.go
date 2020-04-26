@@ -29,16 +29,36 @@ type Packet struct {
   cbuf C.dart_packet_t
 }
 
+type Iterator struct {
+  initialCheck bool
+  cbuf C.dart_iterator_t
+}
+
 func destroyPacket(pkt *Packet) {
   C.dart_destroy(pkt.rawPtr())
 }
 
-func registerPacket(pkt *Packet) {
-  runtime.SetFinalizer(pkt, destroyPacket)
+func destroyIterator(it *Iterator) {
+  C.dart_iterator_destroy(&it.cbuf)
+}
+
+func registerCObj(cobj interface{}) {
+  switch obj := cobj.(type) {
+  case *Packet:
+    runtime.SetFinalizer(obj, destroyPacket)
+  case *Iterator:
+    runtime.SetFinalizer(obj, destroyIterator)
+  default:
+    panic("Invalid type passed to dart.registerCObj")
+  }
 }
 
 func (pkt *Packet) rawPtr() unsafe.Pointer {
   return unsafe.Pointer(&pkt.cbuf)
+}
+
+func (it *Iterator) rawPtr() unsafe.Pointer {
+  return unsafe.Pointer(&it.cbuf)
 }
 
 func int2bool(val C.int) bool {
@@ -70,7 +90,7 @@ func maybeErr(pkt *Packet, err error) (*Packet, error) {
 func maybeErrReg(pkt *Packet, err error) (*Packet, error) {
   pkt, err = maybeErr(pkt, err)
   if pkt != nil {
-    registerPacket(pkt)
+    registerCObj(pkt)
   }
   return pkt, err
 }
@@ -150,6 +170,19 @@ func NewNullPacket() (*Packet, error) {
   return NewPacket()
 }
 
+func NewIterator(pkt *Packet) (*Iterator, error) {
+  it := &Iterator{true, C.dart_iterator_t{}}
+  err := withTLS(func () C.dart_err_t {
+    return C.dart_iterator_init_from_err(&it.cbuf, pkt.rawPtr())
+  })
+  if err == nil {
+    registerCObj(it)
+  } else {
+    it = nil
+  }
+  return it, err
+}
+
 func (pkt *Packet) IsObject() bool {
   retval := C.dart_is_obj(pkt.rawPtr())
   return int2bool(retval)
@@ -189,8 +222,35 @@ func (pkt *Packet) IsNull() bool {
   return int2bool(retval)
 }
 
+func (pkt *Packet) IsFinalized() bool {
+  retval := C.dart_is_finalized(pkt.rawPtr())
+  return int2bool(retval)
+}
+
 func (pkt *Packet) GetType() int {
   return int(C.dart_type_to_int(C.dart_get_type(pkt.rawPtr())))
+}
+
+func (it *Iterator) Next() bool {
+  if it.initialCheck {
+    it.initialCheck = false
+    if !int2bool(C.dart_iterator_done(&it.cbuf)) {
+      return true
+    } else {
+      return false
+    }
+  } else {
+    C.dart_iterator_next(&it.cbuf)
+    return !int2bool(C.dart_iterator_done(&it.cbuf))
+  }
+}
+
+func (it *Iterator) Value() (*Packet, error) {
+  pkt := &Packet{}
+  err := withTLS(func () (C.dart_err_t) {
+    return C.dart_iterator_get_err(&pkt.cbuf, &it.cbuf)
+  })
+  return maybeErrReg(pkt, err)
 }
 
 func FromJSON(val string) (*Packet, error) {
