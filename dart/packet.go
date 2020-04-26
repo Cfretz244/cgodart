@@ -59,49 +59,79 @@ func grabError() error {
   return errors.New(C.GoString(C.dart_get_error()))
 }
 
-func newPktRet(pkt *Packet, err C.dart_err_t) (*Packet, error) {
-  if isOK(err) {
-    registerPacket(pkt)
+func maybeErr(pkt *Packet, err error) (*Packet, error) {
+  if err == nil {
     return pkt, nil
   } else {
-    return nil, grabError()
+    return nil, err
   }
+}
+
+func maybeErrReg(pkt *Packet, err error) (*Packet, error) {
+  pkt, err = maybeErr(pkt, err)
+  if pkt != nil {
+    registerPacket(pkt)
+  }
+  return pkt, err
+}
+
+func withTLS(impl func () C.dart_err_t) error {
+  var err error
+  runtime.LockOSThread()
+  ret := impl()
+  if !isOK(ret) {
+    err = grabError()
+  }
+  runtime.UnlockOSThread()
+  return err
 }
 
 func NewPacket() (*Packet, error) {
   pkt := &Packet {}
-  ret := C.dart_init_err(&pkt.cbuf)
-  return newPktRet(pkt, ret)
+  err := withTLS(func () C.dart_err_t {
+    return C.dart_init_err(&pkt.cbuf)
+  })
+  return maybeErrReg(pkt, err)
 }
 
 func NewObjectPacket() (*Packet, error) {
   pkt := &Packet {}
-  ret := C.dart_obj_init_err(&pkt.cbuf)
-  return newPktRet(pkt, ret)
+  err := withTLS(func () C.dart_err_t {
+    return C.dart_obj_init_err(&pkt.cbuf)
+  })
+  return maybeErrReg(pkt, err)
 }
 
 func NewArrayPacket() (*Packet, error) {
   pkt := &Packet {}
-  ret := C.dart_arr_init_err(&pkt.cbuf)
-  return newPktRet(pkt, ret)
+  err := withTLS(func () C.dart_err_t {
+    return C.dart_arr_init_err(&pkt.cbuf)
+  })
+  return maybeErrReg(pkt, err)
 }
 
 func NewStringPacket(val string) (*Packet, error) {
   pkt := &Packet {}
-  ret := C.dart_str_init_len_err(&pkt.cbuf, C._GoStringPtr(val), C._GoStringLen(val))
-  return newPktRet(pkt, ret)
+  err := withTLS(func () C.dart_err_t {
+    return C.dart_str_init_len_err(&pkt.cbuf, C._GoStringPtr(val), C._GoStringLen(val))
+  })
+  return maybeErrReg(pkt, err)
 }
 
 func NewIntegerPacket(val int64) (*Packet, error) {
   pkt := &Packet {}
-  ret := C.dart_int_init_err(&pkt.cbuf, C.int64_t(val))
-  return newPktRet(pkt, ret)
+  err := withTLS(func () C.dart_err_t {
+    return C.dart_int_init_err(&pkt.cbuf, C.int64_t(val))
+  })
+  return maybeErrReg(pkt, err)
 }
 
 func NewDecimalPacket(val float64) (*Packet, error) {
   pkt := &Packet {}
-  ret := C.dart_dcm_init_err(&pkt.cbuf, C.double(val))
-  return newPktRet(pkt, ret)
+  err := withTLS(func () C.dart_err_t {
+    return C.dart_dcm_init_err(&pkt.cbuf, C.double(val))
+  })
+  return maybeErrReg(pkt, err)
 }
 
 func NewBooleanPacket(val bool) (*Packet, error) {
@@ -110,8 +140,10 @@ func NewBooleanPacket(val bool) (*Packet, error) {
   if val {
     conv = 1
   }
-  ret := C.dart_bool_init_err(&pkt.cbuf, C.int(conv))
-  return newPktRet(pkt, ret)
+  err := withTLS(func () C.dart_err_t {
+    return C.dart_bool_init_err(&pkt.cbuf, C.int(conv))
+  })
+  return maybeErrReg(pkt, err)
 }
 
 func NewNullPacket() (*Packet, error) {
@@ -161,15 +193,29 @@ func (pkt *Packet) GetType() int {
   return int(C.dart_type_to_int(C.dart_get_type(pkt.rawPtr())))
 }
 
-func FromJSON(val string) *Packet {
+func FromJSON(val string) (*Packet, error) {
   pkt := &Packet {}
-  ret := C.dart_from_json_len_err(&pkt.cbuf, C._GoStringPtr(val), C._GoStringLen(val))
-  return newPktRet(pkt, ret)
+  err := withTLS(func () C.dart_err_t {
+    return C.dart_from_json_len_err(&pkt.cbuf, C._GoStringPtr(val), C._GoStringLen(val))
+  })
+  return maybeErrReg(pkt, err)
 }
 
-func (pkt *Packet) ToJSON() string {
+func (pkt *Packet) ToJSON() (string, error) {
+  var cstr *C.char
   var length C.size_t
-  cstr := C.dart_to_json(pkt.rawPtr(), &length)
-  defer C.free(unsafe.Pointer(cstr))
-  return C.GoStringN(cstr, C.int(length))
+  err := withTLS(func () C.dart_err_t {
+    cstr = C.dart_to_json(pkt.rawPtr(), &length)
+    if cstr != nil {
+      return C.DART_NO_ERROR
+    } else {
+      return C.DART_CLIENT_ERROR
+    }
+  })
+  if err == nil {
+    defer C.free(unsafe.Pointer(cstr))
+    return C.GoStringN(cstr, C.int(length)), nil
+  } else {
+    return "", err
+  }
 }
