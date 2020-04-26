@@ -16,7 +16,7 @@ func (pkt *Packet) Field(key string) (*Packet, error) {
   return maybeErrReg(child, err)
 }
 
-func (pkt *Packet) Insert(key string, child *Packet) error {
+func (pkt *Packet) InsertField(key string, child *Packet) error {
   return withTLS(func () C.dart_err_t {
     return C.dart_obj_insert_dart_len(
       pkt.rawPtr(),
@@ -27,50 +27,13 @@ func (pkt *Packet) Insert(key string, child *Packet) error {
   })
 }
 
-func (pkt *Packet) Finalize() error {
+func (pkt *Packet) RemoveField(key string) error {
   return withTLS(func () C.dart_err_t {
-    // Create a temporary packet to swap with.
-    // This step could conceivably fail
-    tmp := &Packet{}
-    err := C.dart_finalize_err(&tmp.cbuf, pkt.rawPtr())
-    if err != C.DART_NO_ERROR {
-      return err
-    }
-
-    // Swap packet instances
-    // This step can't fail even though the signatures
-    // would suggest otherwise
-    C.dart_destroy(pkt.rawPtr())
-    C.dart_move_err(pkt.rawPtr(), tmp.rawPtr())
-    C.dart_destroy(tmp.rawPtr())
-    return C.DART_NO_ERROR
+    return C.dart_obj_erase_len(pkt.rawPtr(), C._GoStringPtr(key), C._GoStringLen(key))
   })
 }
 
-func (pkt *Packet) Lower() error {
-  return pkt.Finalize()
-}
-
-func (pkt *Packet) Definalize() error {
-  return withTLS(func () C.dart_err_t {
-    // Create a temporary packet to swap with.
-    // This step could conceivably fail
-    tmp := &Packet{}
-    err := C.dart_definalize_err(&tmp.cbuf, pkt.rawPtr())
-    if err != C.DART_NO_ERROR {
-      return err
-    }
-
-    // Swap packet instances
-    // This step can't fail even though the signatures
-    // would suggest otherwise
-    C.dart_destroy(pkt.rawPtr())
-    C.dart_move_err(pkt.rawPtr(), tmp.rawPtr())
-    C.dart_destroy(tmp.rawPtr())
-    return C.DART_NO_ERROR
-  })
-}
-
-func (pkt *Packet) Lift() error {
-  return pkt.Definalize()
+func (pkt *Packet) HasField(key string) bool {
+  has := C.dart_obj_has_key_len(pkt.rawPtr(), C._GoStringPtr(key), C._GoStringLen(key))
+  return int2bool(has)
 }

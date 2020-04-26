@@ -170,6 +170,14 @@ func NewNullPacket() (*Packet, error) {
   return NewPacket()
 }
 
+func CopyPacket(pkt *Packet) (*Packet, error) {
+  dup := &Packet{}
+  err := withTLS(func () C.dart_err_t {
+    return C.dart_copy_err(dup.rawPtr(), pkt.rawPtr())
+  })
+  return maybeErrReg(dup, err)
+}
+
 func NewIterator(pkt *Packet) (*Iterator, error) {
   it := &Iterator{true, C.dart_iterator_t{}}
   err := withTLS(func () C.dart_err_t {
@@ -181,6 +189,32 @@ func NewIterator(pkt *Packet) (*Iterator, error) {
     it = nil
   }
   return it, err
+}
+
+func NewKeyIterator(pkt *Packet) (*Iterator, error) {
+  it := &Iterator{true, C.dart_iterator_t{}}
+  err := withTLS(func () C.dart_err_t {
+    return C.dart_iterator_init_key_from_err(&it.cbuf, pkt.rawPtr())
+  })
+  if err == nil {
+    registerCObj(it)
+  } else {
+    it = nil
+  }
+  return it, err
+}
+
+func CopyIterator(it *Iterator) (*Iterator, error) {
+  dup := &Iterator{}
+  err := withTLS(func () C.dart_err_t {
+    return C.dart_iterator_copy_err(&dup.cbuf, &it.cbuf)
+  })
+  if err == nil {
+    registerCObj(dup)
+  } else {
+    dup = nil
+  }
+  return dup, err
 }
 
 func (pkt *Packet) IsObject() bool {
@@ -229,6 +263,80 @@ func (pkt *Packet) IsFinalized() bool {
 
 func (pkt *Packet) GetType() int {
   return int(C.dart_type_to_int(C.dart_get_type(pkt.rawPtr())))
+}
+
+func (pkt *Packet) Size() (int, error) {
+  var size C.size_t
+  errVal := ^C.size_t(0)
+  err := withTLS(func () C.dart_err_t {
+    size = C.dart_size(pkt.rawPtr())
+    if size != errVal {
+      return C.DART_NO_ERROR
+    } else {
+      return C.DART_CLIENT_ERROR
+    }
+  })
+
+  if err != nil {
+    size = 0
+  }
+  return int(size), err
+}
+
+func (pkt *Packet) Equals(other *Packet) bool {
+  if pkt == other {
+    return true
+  } else {
+    return int2bool(C.dart_equal(pkt.rawPtr(), other.rawPtr()))
+  }
+}
+
+func (pkt *Packet) Finalize() error {
+  return withTLS(func () C.dart_err_t {
+    // Create a temporary packet to swap with.
+    // This step could conceivably fail
+    tmp := &Packet{}
+    err := C.dart_finalize_err(&tmp.cbuf, pkt.rawPtr())
+    if err != C.DART_NO_ERROR {
+      return err
+    }
+
+    // Swap packet instances
+    // This step can't fail even though the signatures
+    // would suggest otherwise
+    C.dart_destroy(pkt.rawPtr())
+    C.dart_move_err(pkt.rawPtr(), tmp.rawPtr())
+    C.dart_destroy(tmp.rawPtr())
+    return C.DART_NO_ERROR
+  })
+}
+
+func (pkt *Packet) Lower() error {
+  return pkt.Finalize()
+}
+
+func (pkt *Packet) Definalize() error {
+  return withTLS(func () C.dart_err_t {
+    // Create a temporary packet to swap with.
+    // This step could conceivably fail
+    tmp := &Packet{}
+    err := C.dart_definalize_err(&tmp.cbuf, pkt.rawPtr())
+    if err != C.DART_NO_ERROR {
+      return err
+    }
+
+    // Swap packet instances
+    // This step can't fail even though the signatures
+    // would suggest otherwise
+    C.dart_destroy(pkt.rawPtr())
+    C.dart_move_err(pkt.rawPtr(), tmp.rawPtr())
+    C.dart_destroy(tmp.rawPtr())
+    return C.DART_NO_ERROR
+  })
+}
+
+func (pkt *Packet) Lift() error {
+  return pkt.Definalize()
 }
 
 func (it *Iterator) Next() bool {
