@@ -1,4 +1,4 @@
-package dart
+package cdart
 
 // #include <dart/abi.h>
 import "C"

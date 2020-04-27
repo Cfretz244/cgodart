@@ -1,4 +1,4 @@
-package dart
+package cdart
 
 /*
 #cgo LDFLAGS: -ldart_abi
@@ -362,6 +362,24 @@ func (pkt *Packet) Lift() error {
   return pkt.Definalize()
 }
 
+func (pkt *Packet) Bytes() ([]byte, error) {
+  var clen C.size_t
+  var cbuf unsafe.Pointer
+  err := withTLS(func () C.dart_err_t {
+    cbuf = C.dart_get_bytes(pkt.rawPtr(), &clen)
+    if cbuf != nil {
+      return C.DART_NO_ERROR
+    } else {
+      return C.DART_CLIENT_ERROR
+    }
+  })
+  if err == nil {
+    return C.GoBytes(cbuf, C.int(clen)), nil
+  } else {
+    return nil, err
+  }
+}
+
 func (it *Iterator) Next() bool {
   if it.initialCheck {
     it.initialCheck = false
@@ -378,10 +396,32 @@ func (it *Iterator) Next() bool {
 
 func (it *Iterator) Value() (*Packet, error) {
   pkt := &Packet{}
-  err := withTLS(func () (C.dart_err_t) {
+  err := withTLS(func () C.dart_err_t {
     return C.dart_iterator_get_err(&pkt.cbuf, &it.cbuf)
   })
   return maybeErrReg(pkt, err)
+}
+
+func ValidBytes(bytes []byte) bool {
+  length := C.size_t(len(bytes))
+  return int2bool(C.dart_buffer_is_valid(C.CBytes(bytes), length))
+}
+
+func FromTrustedBytes(bytes []byte) (*Packet, error) {
+  pkt := &Packet{}
+  length := C.size_t(len(bytes))
+  err := withTLS(func () C.dart_err_t {
+    return C.dart_from_bytes_err(&pkt.cbuf, C.CBytes(bytes), length)
+  })
+  return maybeErrReg(pkt, err)
+}
+
+func FromBytes(bytes []byte) (*Packet, error) {
+  if ValidBytes(bytes) {
+    return FromTrustedBytes(bytes)
+  } else {
+    return nil, errors.New("Given byte slice is not interpretable as a dart::buffer")
+  }
 }
 
 func FromJSON(val string) (*Packet, error) {
