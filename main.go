@@ -11,7 +11,7 @@ func main() {
   pkt.InsertIndex(1, str2)
   fmt.Println(pkt.ToJSON())
 
-  _, err := pkt.Bytes()
+  _, err := pkt.ToBytes()
   if err == nil {
     panic("Bytes were received for non-finalized array!")
   }
@@ -20,7 +20,7 @@ func main() {
   obj.InsertField("arr", pkt)
   obj.Finalize()
 
-  bytes, _ := obj.Bytes()
+  bytes, _ := obj.ToBytes()
   if bytes == nil {
     panic("Bytes were not received for finalzed object!")
   }

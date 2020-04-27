@@ -362,7 +362,7 @@ func (pkt *Packet) Lift() error {
   return pkt.Definalize()
 }
 
-func (pkt *Packet) Bytes() ([]byte, error) {
+func (pkt *Packet) ToBytes() ([]byte, error) {
   var clen C.size_t
   var cbuf unsafe.Pointer
   err := withTLS(func () C.dart_err_t {
