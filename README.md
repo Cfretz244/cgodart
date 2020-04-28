@@ -1,5 +1,6 @@
 godart
 ============
+[![Build Status](https://travis-ci.com/Cfretz244/godart.svg?branch=master)](https://travis-ci.com/github/Cfretz244/godart)
 
 **GoDart** is a set of experimental, actively being developed,
 **Go** bindings for [libdart](https://github.com/target/libdart).

@@ -1,0 +1,37 @@
+# Basic config
+dist: xenial
+sudo: required
+language: go
+branches:
+  only:
+    - master
+    - development
+go:
+  - 1.13.x
+  - 1.14.x
+
+before_install:
+  - |
+    build_dir=$(mktemp -d)
+    pushd $build_dir
+    curl -sL "https://github.com/microsoft/GSL/archive/v2.0.0.tar.gz" | tar xzf -
+    cd GSL-2.0.0
+    sudo cp -r include/gsl /usr/local/include/gsl
+    cd ..
+    curl -sL "https://github.com/Tencent/rapidjson/archive/v1.1.0.tar.gz" | tar xzf -
+    cd rapidjson-1.1.0
+    sudo cp -r include/rapidjson /usr/local/include/rapidjson
+    cd ..
+    curl -sL "https://github.com/target/libdart/archive/v1.2.2.tar.gz" | tar xzf -
+    cd libdart-1.2.2
+    mkdir build
+    cd build
+    cmake .. -Dbuild_abi=ON -Dtest=OFF
+    sudo make install
+    popd
+    rm -rf $build_dir
+
+script:
+  - ls
+  - pwd
+  - LD_LIBRARY_PATH=/usr/local/lib go test -v ./...
