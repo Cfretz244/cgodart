@@ -2,7 +2,6 @@ package cdart
 
 // #include <dart/abi.h>
 import "C"
-import "unsafe"
 
 func (pkt *Packet) String() (string, error) {
   var cstr *C.char
@@ -16,7 +15,6 @@ func (pkt *Packet) String() (string, error) {
     }
   })
   if err == nil {
-    defer C.free(unsafe.Pointer(cstr))
     return C.GoStringN(cstr, C.int(length)), nil
   } else {
     return "", err

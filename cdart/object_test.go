@@ -78,3 +78,34 @@ func TestNewObjectPacket(t *testing.T) {
     t.Error("Expected rebuilt object to be equal to original")
   }
 }
+
+func TestObjectFieldAccess(t *testing.T) {
+  // Get an object
+  obj, _ := cdart.NewObjectPacket()
+
+  // Check what happens if we access a non-existent field
+  fld, err := obj.Field("hello")
+  if err != nil {
+    t.Error("Expected non-existent field access to return null, not an error")
+  } else if !fld.IsNull() {
+    t.Error("Expected non-existent field to be null")
+  } else if ftype := fld.GetType(); ftype != cdart.NullType {
+    t.Error("Expected type of null field to be null")
+  }
+
+  // Check what happens if we insert some fields.
+  obj.InsertStringField("hello", "world")
+  obj.InsertIntegerField("answer", 42)
+  obj.InsertDecimalField("c", 2.99792)
+  obj.InsertBooleanField("truth", true)
+  obj.InsertNullField("lies")
+  if size, _ := obj.Size(); size != 5 {
+    t.Error("Expected object of size five to report size of 5, got", size)
+  }
+
+  sfld, _ := obj.Field("hello");
+  str, _ := sfld.String()
+  if (str != "world") {
+    t.Error("Expected object with key \"hello\" to have value \"world\", got", str)
+  }
+}
