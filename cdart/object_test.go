@@ -103,9 +103,55 @@ func TestObjectFieldAccess(t *testing.T) {
     t.Error("Expected object of size five to report size of 5, got", size)
   }
 
+  // Check the string field
   sfld, _ := obj.Field("hello");
-  str, _ := sfld.String()
-  if (str != "world") {
-    t.Error("Expected object with key \"hello\" to have value \"world\", got", str)
+  strval, _ := sfld.String()
+  if strval != "world" {
+    t.Error("Expected object with key \"hello\" to have value \"world\", got", strval)
+  }
+
+  // Check the int field
+  ifld, _ := obj.Field("answer")
+  intval, _ := ifld.Integer()
+  if intval != 42 {
+    t.Error("Expected object with key \"answer\" to have value 42, got", intval)
+  }
+
+  // Check the decimal field
+  dfld, _ := obj.Field("c")
+  dcmval, _ := dfld.Decimal()
+  if dcmval != 2.99792 {
+    t.Error("Expected object with key \"c\" to have value 2.99792, got", dcmval)
+  }
+
+  // Check the boolean field
+  bfld, _ := obj.Field("truth")
+  boolval, _ := bfld.Boolean()
+  if !boolval {
+    t.Error("Expected object with key \"truth\" to have value true, got", dcmval)
+  }
+
+  // Check the null field
+  nfld, _ := obj.Field("lies")
+  if !nfld.IsNull() {
+    t.Error("Expected object with key \"lies\" to have nil value, got", dcmval)
+  }
+
+  // Check iteration
+  count := 0
+  arr := [5]*cdart.Packet{dfld, nfld, sfld, bfld, ifld}
+  it, _ := cdart.NewIterator(obj)
+  for it.Next() {
+    val, _ := it.Value()
+    if !val.Equals(arr[count]) {
+      t.Error("Expected specific object value")
+    }
+    count++
+  }
+
+  // Check erasure
+  obj.RemoveField("lies")
+  if shorter, _ := obj.Size(); shorter != 4 {
+    t.Error("Expected object with removed field to be of length 4, got", 4)
   }
 }
