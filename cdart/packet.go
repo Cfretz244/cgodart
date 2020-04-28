@@ -306,7 +306,7 @@ func (pkt *Packet) Clear() error {
   return nil
 }
 
-func (pkt *Packet) Equals(other *Packet) bool {
+func (pkt *Packet) Equal(other *Packet) bool {
   if pkt == other {
     return true
   } else {

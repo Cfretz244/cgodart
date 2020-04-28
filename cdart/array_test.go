@@ -52,7 +52,7 @@ func TestNewArrayPacket(t *testing.T) {
   }
 
   // Check equality
-  if !arr.Equals(dup) {
+  if !arr.Equal(dup) {
     t.Error("Expected copied packets to be equal")
   }
 
@@ -126,7 +126,7 @@ func TestArrayFieldAccess(t *testing.T) {
   it, _ := cdart.NewIterator(arr)
   for it.Next() {
     val, _ := it.Value()
-    if !val.Equals(goarr[count]) {
+    if !val.Equal(goarr[count]) {
       t.Error("Expected specific array value")
     }
     count++

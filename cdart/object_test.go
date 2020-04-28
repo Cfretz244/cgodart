@@ -52,7 +52,7 @@ func TestNewObjectPacket(t *testing.T) {
   }
 
   // Check equality
-  if !obj.Equals(dup) {
+  if !obj.Equal(dup) {
     t.Error("Expected copied packets to be equal")
   }
 
@@ -74,7 +74,7 @@ func TestNewObjectPacket(t *testing.T) {
   rebuilt, err := cdart.FromBytes(bytes)
   if err != nil {
     t.Error("Expected finalized object buffer to be reconstructible")
-  } else if !rebuilt.Equals(obj) {
+  } else if !rebuilt.Equal(obj) {
     t.Error("Expected rebuilt object to be equal to original")
   }
 }
@@ -143,7 +143,7 @@ func TestObjectFieldAccess(t *testing.T) {
   it, _ := cdart.NewIterator(obj)
   for it.Next() {
     val, _ := it.Value()
-    if !val.Equals(arr[count]) {
+    if !val.Equal(arr[count]) {
       t.Error("Expected specific object value")
     }
     count++
