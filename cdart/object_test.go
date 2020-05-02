@@ -155,3 +155,40 @@ func TestObjectFieldAccess(t *testing.T) {
     t.Error("Expected object with removed field to be of length 4, got", 4)
   }
 }
+
+func TestObjectInitialization(t *testing.T) {
+  // cdart.Packet contains a raw C type,
+  // which MUST be initialized by one of
+  // the NewPacket functions prior to use
+  // An unitialized packet instance.
+  // DON'T DO ANY OF THIS
+  pkt := &cdart.Packet{}
+
+  assertPanic(t, func () {
+    pkt.Field("nope")
+  })
+  assertPanic(t, func () {
+    pkt.InsertField("nope", &cdart.Packet{})
+  })
+  assertPanic(t, func () {
+    pkt.InsertStringField("nope", "won't work")
+  })
+  assertPanic(t, func () {
+    pkt.InsertIntegerField("nope", -1)
+  })
+  assertPanic(t, func () {
+    pkt.InsertDecimalField("nope", -1.0)
+  })
+  assertPanic(t, func () {
+    pkt.InsertBooleanField("nope", false)
+  })
+  assertPanic(t, func () {
+    pkt.InsertNullField("nope")
+  })
+  assertPanic(t, func () {
+    pkt.RemoveField("nope")
+  })
+  assertPanic(t, func () {
+    pkt.HasField("nope")
+  })
+}

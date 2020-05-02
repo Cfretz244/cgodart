@@ -4,6 +4,7 @@ package cdart
 import "C"
 
 func (pkt *Packet) Index(idx uint) (*Packet, error) {
+  pkt.maybeBail()
   child := &Packet{}
   cidx := C.size_t(idx)
   err := withTLS(func () C.dart_err_t {
@@ -13,6 +14,7 @@ func (pkt *Packet) Index(idx uint) (*Packet, error) {
 }
 
 func (pkt *Packet) InsertIndex(idx uint, child *Packet) error {
+  pkt.maybeBail()
   cidx := C.size_t(idx)
   return withTLS(func () C.dart_err_t {
     return C.dart_arr_insert_dart(
@@ -24,6 +26,7 @@ func (pkt *Packet) InsertIndex(idx uint, child *Packet) error {
 }
 
 func (pkt *Packet) InsertStringIndex(idx uint, value string) error {
+  pkt.maybeBail()
   cidx := C.size_t(idx)
   return withTLS(func () C.dart_err_t {
     return C.dart_arr_insert_str_len(
@@ -36,6 +39,7 @@ func (pkt *Packet) InsertStringIndex(idx uint, value string) error {
 }
 
 func (pkt *Packet) InsertIntegerIndex(idx uint, value int64) error {
+  pkt.maybeBail()
   cidx := C.size_t(idx)
   return withTLS(func () C.dart_err_t {
     return C.dart_arr_insert_int(
@@ -47,6 +51,7 @@ func (pkt *Packet) InsertIntegerIndex(idx uint, value int64) error {
 }
 
 func (pkt *Packet) InsertDecimalIndex(idx uint, value float64) error {
+  pkt.maybeBail()
   cidx := C.size_t(idx)
   return withTLS(func () C.dart_err_t {
     return C.dart_arr_insert_dcm(
@@ -58,6 +63,7 @@ func (pkt *Packet) InsertDecimalIndex(idx uint, value float64) error {
 }
 
 func (pkt *Packet) InsertBooleanIndex(idx uint, value bool) error {
+  pkt.maybeBail()
   cidx := C.size_t(idx)
   return withTLS(func () C.dart_err_t {
     return C.dart_arr_insert_bool(
@@ -69,6 +75,7 @@ func (pkt *Packet) InsertBooleanIndex(idx uint, value bool) error {
 }
 
 func (pkt *Packet) InsertNullIndex(idx uint) error {
+  pkt.maybeBail()
   cidx := C.size_t(idx)
   return withTLS(func () C.dart_err_t {
     return C.dart_arr_insert_null(
@@ -79,6 +86,7 @@ func (pkt *Packet) InsertNullIndex(idx uint) error {
 }
 
 func (pkt *Packet) SetIndex(idx uint, child *Packet) error {
+  pkt.maybeBail()
   cidx := C.size_t(idx)
   return withTLS(func () C.dart_err_t {
     return C.dart_arr_set_dart(
@@ -90,6 +98,7 @@ func (pkt *Packet) SetIndex(idx uint, child *Packet) error {
 }
 
 func (pkt *Packet) SetStringIndex(idx uint, value string) error {
+  pkt.maybeBail()
   cidx := C.size_t(idx)
   return withTLS(func () C.dart_err_t {
     return C.dart_arr_set_str_len(
@@ -102,6 +111,7 @@ func (pkt *Packet) SetStringIndex(idx uint, value string) error {
 }
 
 func (pkt *Packet) SetIntegerIndex(idx uint, value int64) error {
+  pkt.maybeBail()
   cidx := C.size_t(idx)
   return withTLS(func () C.dart_err_t {
     return C.dart_arr_set_int(
@@ -113,6 +123,7 @@ func (pkt *Packet) SetIntegerIndex(idx uint, value int64) error {
 }
 
 func (pkt *Packet) SetDecimalIndex(idx uint, value float64) error {
+  pkt.maybeBail()
   cidx := C.size_t(idx)
   return withTLS(func () C.dart_err_t {
     return C.dart_arr_set_dcm(
@@ -124,6 +135,7 @@ func (pkt *Packet) SetDecimalIndex(idx uint, value float64) error {
 }
 
 func (pkt *Packet) SetBooleanIndex(idx uint, value bool) error {
+  pkt.maybeBail()
   cidx := C.size_t(idx)
   return withTLS(func () C.dart_err_t {
     return C.dart_arr_set_bool(
@@ -134,7 +146,19 @@ func (pkt *Packet) SetBooleanIndex(idx uint, value bool) error {
   })
 }
 
+func (pkt *Packet) SetNullIndex(idx uint) error {
+  pkt.maybeBail()
+  cidx := C.size_t(idx)
+  return withTLS(func () C.dart_err_t {
+    return C.dart_arr_set_null(
+      pkt.rawPtr(),
+      cidx,
+    )
+  })
+}
+
 func (pkt *Packet) RemoveIndex(idx uint) error {
+  pkt.maybeBail()
   cidx := C.size_t(idx)
   return withTLS(func () C.dart_err_t {
     return C.dart_arr_erase(
@@ -145,6 +169,7 @@ func (pkt *Packet) RemoveIndex(idx uint) error {
 }
 
 func (pkt *Packet) Resize(length uint) error {
+  pkt.maybeBail()
   clen := C.size_t(length)
   return withTLS(func () C.dart_err_t {
     return C.dart_arr_resize(pkt.rawPtr(), clen)
@@ -152,6 +177,7 @@ func (pkt *Packet) Resize(length uint) error {
 }
 
 func (pkt *Packet) Reserve(length uint) error {
+  pkt.maybeBail()
   clen := C.size_t(length)
   return withTLS(func () C.dart_err_t {
     return C.dart_arr_reserve(pkt.rawPtr(), clen)

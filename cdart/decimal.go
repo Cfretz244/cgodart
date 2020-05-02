@@ -4,6 +4,7 @@ package cdart
 import "C"
 
 func (pkt *Packet) Decimal() (float64, error) {
+  pkt.maybeBail()
   var val C.double
   err := withTLS(func () C.dart_err_t {
     return C.dart_dcm_get_err(pkt.rawPtr(), &val)

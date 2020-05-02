@@ -138,3 +138,61 @@ func TestArrayFieldAccess(t *testing.T) {
     t.Error("Expected array with removed field to be of length 4, got", 4)
   }
 }
+
+func TestArrayInitialization(t *testing.T) {
+  // cdart.Packet contains a raw C type,
+  // which MUST be initialized by one of
+  // the NewPacket functions prior to use
+  // An unitialized packet instance.
+  // DON'T DO ANY OF THIS
+  pkt := &cdart.Packet{}
+
+  assertPanic(t, func () {
+    pkt.Index(0)
+  })
+  assertPanic(t, func () {
+    pkt.InsertIndex(0, &cdart.Packet{})
+  })
+  assertPanic(t, func () {
+    pkt.InsertStringIndex(0, "nope")
+  })
+  assertPanic(t, func () {
+    pkt.InsertIntegerIndex(0, -1)
+  })
+  assertPanic(t, func () {
+    pkt.InsertDecimalIndex(0, -1.0)
+  })
+  assertPanic(t, func () {
+    pkt.InsertBooleanIndex(0, false)
+  })
+  assertPanic(t, func () {
+    pkt.InsertNullIndex(0)
+  })
+  assertPanic(t, func () {
+    pkt.SetIndex(0, &cdart.Packet{})
+  })
+  assertPanic(t, func () {
+    pkt.SetStringIndex(0, "nope")
+  })
+  assertPanic(t, func () {
+    pkt.SetIntegerIndex(0, -1)
+  })
+  assertPanic(t, func () {
+    pkt.SetDecimalIndex(0, -1.0)
+  })
+  assertPanic(t, func () {
+    pkt.SetBooleanIndex(0, false)
+  })
+  assertPanic(t, func () {
+    pkt.SetNullIndex(0)
+  })
+  assertPanic(t, func () {
+    pkt.RemoveIndex(0)
+  })
+  assertPanic(t, func () {
+    pkt.Resize(10)
+  })
+  assertPanic(t, func () {
+    pkt.Reserve(10)
+  })
+}
