@@ -12,7 +12,7 @@ which implements a very thin wrapper over **Dart's C API**.
 
 `cdart` will likely receive some extension in the future, but this
 package can be considered reasonably stable for the time being.
-For actively developing against, use the `v1.0.0-alpha` snapshot.
+For actively developing against, use the `v0.1.0-alpha` snapshot.
 
 `cdart` is rather raw at the moment, mapping directly from **C**
 types/functions into **Go** types/functions, and dispatching into
