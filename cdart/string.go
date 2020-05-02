@@ -4,6 +4,7 @@ package cdart
 import "C"
 
 func (pkt *Packet) String() (string, error) {
+  pkt.maybeBail()
   var cstr *C.char
   var length C.size_t
   err := withTLS(func () C.dart_err_t {

@@ -26,11 +26,12 @@ const (
 )
 
 type Packet struct {
+  live bool
   cbuf C.dart_packet_t
 }
 
 type Iterator struct {
-  initialCheck bool
+  live, initialCheck bool
   cbuf C.dart_iterator_t
 }
 
@@ -50,6 +51,45 @@ func registerCObj(cobj interface{}) {
     runtime.SetFinalizer(obj, destroyIterator)
   default:
     panic("Invalid type passed to dart.registerCObj")
+  }
+}
+
+func caller(skip int) string {
+  idx := skip + 2
+
+  pcs := make([]uintptr, idx + 2)
+  n := runtime.Callers(0, pcs)
+
+  frame := runtime.Frame{Function: "unknown"}
+  if n > 0 {
+      frames := runtime.CallersFrames(pcs[:n])
+      for more, cidx := true, 0; more && cidx <= idx; cidx++ {
+          var candidate runtime.Frame
+          candidate, more = frames.Next()
+          if cidx == idx {
+              frame = candidate
+          }
+      }
+  }
+  return frame.Function
+}
+
+func bail() {
+  cname := caller(1)
+  panic("Unitialized C object passed into " + cname)
+}
+
+func (pkt *Packet) maybeBail() {
+  if !pkt.live {
+    cname := caller(1)
+    panic("Unitialized C packet passed into " + cname)
+  }
+}
+
+func (it *Iterator) maybeBail() {
+  if !it.live {
+    cname := caller(1)
+    panic("Unitialized C iterator passed into" + cname)
   }
 }
 
@@ -98,6 +138,7 @@ func maybeErr(pkt *Packet, err error) (*Packet, error) {
 func maybeErrReg(pkt *Packet, err error) (*Packet, error) {
   pkt, err = maybeErr(pkt, err)
   if pkt != nil {
+    pkt.live = true
     registerCObj(pkt)
   }
   return pkt, err
@@ -179,6 +220,7 @@ func NewNullPacket() (*Packet, error) {
 }
 
 func CopyPacket(pkt *Packet) (*Packet, error) {
+  pkt.maybeBail()
   dup := &Packet{}
   err := withTLS(func () C.dart_err_t {
     return C.dart_copy_err(dup.rawPtr(), pkt.rawPtr())
@@ -187,11 +229,13 @@ func CopyPacket(pkt *Packet) (*Packet, error) {
 }
 
 func NewIterator(pkt *Packet) (*Iterator, error) {
-  it := &Iterator{true, C.dart_iterator_t{}}
+  pkt.maybeBail()
+  it := &Iterator{false, true, C.dart_iterator_t{}}
   err := withTLS(func () C.dart_err_t {
     return C.dart_iterator_init_from_err(&it.cbuf, pkt.rawPtr())
   })
   if err == nil {
+    it.live = true
     registerCObj(it)
   } else {
     it = nil
@@ -200,11 +244,13 @@ func NewIterator(pkt *Packet) (*Iterator, error) {
 }
 
 func NewKeyIterator(pkt *Packet) (*Iterator, error) {
-  it := &Iterator{true, C.dart_iterator_t{}}
+  pkt.maybeBail()
+  it := &Iterator{false, true, C.dart_iterator_t{}}
   err := withTLS(func () C.dart_err_t {
     return C.dart_iterator_init_key_from_err(&it.cbuf, pkt.rawPtr())
   })
   if err == nil {
+    it.live = true
     registerCObj(it)
   } else {
     it = nil
@@ -213,11 +259,17 @@ func NewKeyIterator(pkt *Packet) (*Iterator, error) {
 }
 
 func CopyIterator(it *Iterator) (*Iterator, error) {
+  if !it.live {
+    bail()
+  }
+
   dup := &Iterator{}
   err := withTLS(func () C.dart_err_t {
     return C.dart_iterator_copy_err(&dup.cbuf, &it.cbuf)
   })
   if err == nil {
+    dup.live = true
+    dup.initialCheck = it.initialCheck
     registerCObj(dup)
   } else {
     dup = nil
@@ -226,11 +278,13 @@ func CopyIterator(it *Iterator) (*Iterator, error) {
 }
 
 func (pkt *Packet) IsObject() bool {
+  pkt.maybeBail()
   retval := C.dart_is_obj(pkt.rawPtr())
   return int2bool(retval)
 }
 
 func (pkt *Packet) IsArray() bool {
+  pkt.maybeBail()
   retval := C.dart_is_arr(pkt.rawPtr())
   return int2bool(retval)
 }
@@ -240,44 +294,54 @@ func (pkt *Packet) IsAggregate() bool {
 }
 
 func (pkt *Packet) IsString() bool {
+  pkt.maybeBail()
   retval := C.dart_is_str(pkt.rawPtr())
   return int2bool(retval)
 }
 
 func (pkt *Packet) IsInteger() bool {
+  pkt.maybeBail()
   retval := C.dart_is_int(pkt.rawPtr())
   return int2bool(retval)
 }
 
 func (pkt *Packet) IsDecimal() bool {
+  pkt.maybeBail()
   retval := C.dart_is_dcm(pkt.rawPtr())
   return int2bool(retval)
 }
 
 func (pkt *Packet) IsBoolean() bool {
+  pkt.maybeBail()
   retval := C.dart_is_bool(pkt.rawPtr())
   return int2bool(retval)
 }
 
 func (pkt *Packet) IsNull() bool {
+  pkt.maybeBail()
   retval := C.dart_is_null(pkt.rawPtr())
   return int2bool(retval)
 }
 
 func (pkt *Packet) IsFinalized() bool {
+  pkt.maybeBail()
   retval := C.dart_is_finalized(pkt.rawPtr())
   return int2bool(retval)
 }
 
 func (pkt *Packet) GetType() int {
+  pkt.maybeBail()
   return int(C.dart_type_as_int(&pkt.cbuf))
 }
 
 func (pkt *Packet) Refcount() uint64 {
+  pkt.maybeBail()
   return uint64(C.dart_refcount(pkt.rawPtr()))
 }
 
 func (pkt *Packet) Size() (int, error) {
+  pkt.maybeBail()
+
   var size C.size_t
   errVal := ^C.size_t(0)
   err := withTLS(func () C.dart_err_t {
@@ -307,6 +371,9 @@ func (pkt *Packet) Clear() error {
 }
 
 func (pkt *Packet) Equal(other *Packet) bool {
+  pkt.maybeBail()
+  other.maybeBail()
+
   if pkt == other {
     return true
   } else {
@@ -315,6 +382,7 @@ func (pkt *Packet) Equal(other *Packet) bool {
 }
 
 func (pkt *Packet) Finalize() error {
+  pkt.maybeBail()
   return withTLS(func () C.dart_err_t {
     // Create a temporary packet to swap with.
     // This step could conceivably fail
@@ -339,6 +407,7 @@ func (pkt *Packet) Lower() error {
 }
 
 func (pkt *Packet) Definalize() error {
+  pkt.maybeBail()
   return withTLS(func () C.dart_err_t {
     // Create a temporary packet to swap with.
     // This step could conceivably fail
@@ -363,6 +432,8 @@ func (pkt *Packet) Lift() error {
 }
 
 func (pkt *Packet) ToBytes() ([]byte, error) {
+  pkt.maybeBail()
+
   var clen C.size_t
   var cbuf unsafe.Pointer
   err := withTLS(func () C.dart_err_t {
@@ -381,6 +452,8 @@ func (pkt *Packet) ToBytes() ([]byte, error) {
 }
 
 func (it *Iterator) Next() bool {
+  it.maybeBail()
+
   if it.initialCheck {
     it.initialCheck = false
     if !int2bool(C.dart_iterator_done(&it.cbuf)) {
@@ -395,6 +468,8 @@ func (it *Iterator) Next() bool {
 }
 
 func (it *Iterator) Value() (*Packet, error) {
+  it.maybeBail()
+
   pkt := &Packet{}
   err := withTLS(func () C.dart_err_t {
     return C.dart_iterator_get_err(&pkt.cbuf, &it.cbuf)
@@ -433,6 +508,8 @@ func FromJSON(val string) (*Packet, error) {
 }
 
 func (pkt *Packet) ToJSON() (string, error) {
+  pkt.maybeBail()
+
   var cstr *C.char
   var length C.size_t
   err := withTLS(func () C.dart_err_t {

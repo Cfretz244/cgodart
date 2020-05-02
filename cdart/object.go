@@ -4,6 +4,7 @@ package cdart
 import "C"
 
 func (pkt *Packet) Field(key string) (*Packet, error) {
+  pkt.maybeBail()
   child := &Packet{}
   err := withTLS(func () C.dart_err_t {
     return C.dart_obj_get_len_err(
@@ -17,6 +18,7 @@ func (pkt *Packet) Field(key string) (*Packet, error) {
 }
 
 func (pkt *Packet) InsertField(key string, child *Packet) error {
+  pkt.maybeBail()
   return withTLS(func () C.dart_err_t {
     return C.dart_obj_insert_dart_len(
       pkt.rawPtr(),
@@ -28,6 +30,7 @@ func (pkt *Packet) InsertField(key string, child *Packet) error {
 }
 
 func (pkt *Packet) InsertStringField(key string, value string) error {
+  pkt.maybeBail()
   return withTLS(func () C.dart_err_t {
     return C.dart_obj_insert_str_len(
       pkt.rawPtr(),
@@ -40,6 +43,7 @@ func (pkt *Packet) InsertStringField(key string, value string) error {
 }
 
 func (pkt *Packet) InsertIntegerField(key string, value int64) error {
+  pkt.maybeBail()
   return withTLS(func () C.dart_err_t {
     return C.dart_obj_insert_int_len(
       pkt.rawPtr(),
@@ -51,6 +55,7 @@ func (pkt *Packet) InsertIntegerField(key string, value int64) error {
 }
 
 func (pkt *Packet) InsertDecimalField(key string, value float64) error {
+  pkt.maybeBail()
   return withTLS(func () C.dart_err_t {
     return C.dart_obj_insert_dcm_len(
       pkt.rawPtr(),
@@ -62,6 +67,7 @@ func (pkt *Packet) InsertDecimalField(key string, value float64) error {
 }
 
 func (pkt *Packet) InsertBooleanField(key string, value bool) error {
+  pkt.maybeBail()
   return withTLS(func () C.dart_err_t {
     return C.dart_obj_insert_bool_len(
       pkt.rawPtr(),
@@ -73,6 +79,7 @@ func (pkt *Packet) InsertBooleanField(key string, value bool) error {
 }
 
 func (pkt *Packet) InsertNullField(key string) error {
+  pkt.maybeBail()
   return withTLS(func () C.dart_err_t {
     return C.dart_obj_insert_null_len(
       pkt.rawPtr(),
@@ -83,6 +90,7 @@ func (pkt *Packet) InsertNullField(key string) error {
 }
 
 func (pkt *Packet) RemoveField(key string) error {
+  pkt.maybeBail()
   return withTLS(func () C.dart_err_t {
     return C.dart_obj_erase_len(
       pkt.rawPtr(),
@@ -93,6 +101,7 @@ func (pkt *Packet) RemoveField(key string) error {
 }
 
 func (pkt *Packet) HasField(key string) bool {
+  pkt.maybeBail()
   has := C.dart_obj_has_key_len(
     pkt.rawPtr(),
     C._GoStringPtr(key),
