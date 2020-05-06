@@ -7,7 +7,16 @@ import (
 type BooleanBuffer struct {
   native *cdart.Packet
   json string
-  val bool
+  val, set bool
+}
+
+func boolFromPacket(pkt *cdart.Packet) *BooleanBuffer {
+  if !pkt.IsBoolean() {
+    panic("Native packet of unexpected type passed to BooleanBuffer converter")
+  } else if !pkt.IsFinalized() {
+    panic("Non-finalized boolean passed to BooleanBuffer converter")
+  }
+  return &BooleanBuffer{pkt, "", false, false}
 }
 
 func (num *BooleanBuffer) ctype() *cdart.Packet {
@@ -66,7 +75,10 @@ func (num *BooleanBuffer) ToJSON() string {
   } else if num.native != nil {
     // We haven't generated our JSON before, but we
     // have a native representation, so do it.
-    num.json, _ = num.native.ToJSON()
+    json, err := num.native.ToJSON()
+    errCheck(err, "boolean")
+
+    num.json = json
     return num.json
   } else {
     // We're a default initialized numuct

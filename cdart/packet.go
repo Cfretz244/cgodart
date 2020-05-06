@@ -7,6 +7,16 @@ package cdart
 static inline int dart_type_as_int(dart_packet_t const* pkt) {
   return (int) dart_get_type(pkt);
 }
+
+static inline dart_err_t dart_from_json_fast_len_err(dart_packet_t* pkt, _GoString_ str) {
+  dart_buffer_t buf;
+  dart_err_t err = dart_buffer_from_json_len_err(&buf, _GoStringPtr(str), _GoStringLen(str));
+  if (err == DART_NO_ERROR) {
+    err = dart_finalize_err(pkt, &buf);
+    dart_destroy(&buf);
+  }
+  return err;
+}
 */
 import "C"
 import (
@@ -503,6 +513,14 @@ func FromJSON(val string) (*Packet, error) {
   pkt := &Packet {}
   err := withTLS(func () C.dart_err_t {
     return C.dart_from_json_len_err(&pkt.cbuf, C._GoStringPtr(val), C._GoStringLen(val))
+  })
+  return maybeErrReg(pkt, err)
+}
+
+func FastFromJSON(val string) (*Packet, error) {
+  pkt := &Packet {}
+  err := withTLS(func () C.dart_err_t {
+    return C.dart_from_json_fast_len_err(&pkt.cbuf, val)
   })
   return maybeErrReg(pkt, err)
 }

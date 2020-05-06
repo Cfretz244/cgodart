@@ -8,6 +8,16 @@ type IntegerBuffer struct {
   native *cdart.Packet
   json string
   val int64
+  set bool
+}
+
+func intFromPacket(pkt *cdart.Packet) *IntegerBuffer {
+  if !pkt.IsInteger() {
+    panic("Native packet of unexpected type passed to IntegerBuffer converter")
+  } else if !pkt.IsFinalized() {
+    panic("Non-finalized integer passed to IntegerBuffer converter")
+  }
+  return &IntegerBuffer{pkt, "", 0, false}
 }
 
 func (num *IntegerBuffer) ctype() *cdart.Packet {
@@ -66,7 +76,10 @@ func (num *IntegerBuffer) ToJSON() string {
   } else if num.native != nil {
     // We haven't generated our JSON before, but we
     // have a native representation, so do it.
-    num.json, _ = num.native.ToJSON()
+    json, err := num.native.ToJSON()
+    errCheck(err, "integer")
+
+    num.json = json
     return num.json
   } else {
     // We're a default initialized numuct

@@ -6,8 +6,34 @@ import (
 
 type ObjectBuffer struct {
   native *cdart.Packet
-  cache map[string] Buffer
+  cache map[string] *Buffer
   json string
+}
+
+func objFromPacket(pkt *cdart.Packet) *ObjectBuffer {
+  if !pkt.IsObject() {
+    panic("Native packet of unexpected type passed to ObjectBuffer converter")
+  } else if !pkt.IsFinalized() {
+    panic("Non-finalized object passed to ObjectBuffer converter")
+  }
+  return &ObjectBuffer{pkt, make(map[string] *Buffer), ""}
+}
+
+func (obj *ObjectBuffer) Field(key string) *Buffer {
+  // Short-circuit if we haven't been properly initialized
+  if obj.native == nil {
+    return nil
+  }
+
+  // Lazily load field into cache and return
+  if !obj.cache[key].isSet() && obj.native.HasField(key) {
+    pkt, err := obj.native.Field(key)
+    errCheck(err, "object")
+    obj.cache[key] = wrapBuffer(pkt)
+  } else if !obj.cache[key].isSet() {
+    return nil
+  }
+  return obj.cache[key]
 }
 
 func (obj *ObjectBuffer) ctype() *cdart.Packet {
@@ -58,10 +84,6 @@ func (obj *ObjectBuffer) Refcount() uint64 {
   }
 }
 
-func (obj *ObjectBuffer) equal(other wrapper) bool {
-  return false
-}
-
 func (obj *ObjectBuffer) ToJSON() string {
   if len(obj.json) > 0 {
     // We've already generated JSON previously
@@ -70,7 +92,10 @@ func (obj *ObjectBuffer) ToJSON() string {
   } else if obj.native != nil {
     // We haven't generated our JSON before, but we
     // have a native representation, so do it.
-    obj.json, _ = obj.native.ToJSON()
+    json, err := obj.native.ToJSON()
+    errCheck(err, "object")
+
+    obj.json = json
     return obj.json
   } else {
     // We're a default initialized struct

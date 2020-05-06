@@ -6,14 +6,24 @@ import (
 
 type StringBuffer struct {
   native *cdart.Packet
-  json string
+  json, val string
+  set bool
+}
+
+func strFromPacket(pkt *cdart.Packet) *StringBuffer {
+  if !pkt.IsString() {
+    panic("Native packet of unexpected type passed to StringBuffer converter")
+  } else if !pkt.IsFinalized() {
+    panic("Non-finalized string passed to StringBuffer converter")
+  }
+  return &StringBuffer{pkt, "", "", false}
 }
 
 func (str *StringBuffer) ctype() *cdart.Packet {
   return str.native
 }
 
-func (str *StringBuffer) IsStringBuffer() bool {
+func (str *StringBuffer) IsObject() bool {
   return false
 }
 
@@ -65,7 +75,10 @@ func (str *StringBuffer) ToJSON() string {
   } else if str.native != nil {
     // We haven't generated our JSON before, but we
     // have a native representation, so do it.
-    str.json, _ = str.native.ToJSON()
+    json, err := str.native.ToJSON()
+    errCheck(err, "string")
+
+    str.json = json
     return str.json
   } else {
     // We're a default initialized struct

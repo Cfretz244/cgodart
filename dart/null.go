@@ -6,6 +6,13 @@ import (
 
 type NullBuffer struct {}
 
+func nullFromPacket(pkt *cdart.Packet) *NullBuffer {
+  if !pkt.IsNull() {
+    panic("Native packet of unexpected type passed to NullBuffer converter")
+  }
+  return &NullBuffer{}
+}
+
 func (num *NullBuffer) ctype() *cdart.Packet {
   return nil
 }

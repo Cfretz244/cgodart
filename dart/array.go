@@ -6,23 +6,30 @@ import (
 
 type ArrayBuffer struct {
   native *cdart.Packet
-  cache []Buffer
+  cache []*Buffer
   json string
 }
 
-func (arr *ArrayBuffer) validate() {
-  if arr.native == nil || arr.cache == nil {
-    panic("dart.ArrayBuffer instances must be initialized by a factory function")
+func arrFromPacket(pkt *cdart.Packet) *ArrayBuffer {
+  // Make sure type is as expected
+  if !pkt.IsArray() {
+    panic("Native packet of unexpected type passed to ArrayBuffer converter")
+  } else if !pkt.IsFinalized() {
+    panic("Non-finalized array passed to ArrayBuffer converter")
   }
+  size, err := pkt.Size()
+  errCheck(err, "array")
+  return &ArrayBuffer{pkt, make([]*Buffer, size), ""}
 }
 
-func (arr *ArrayBuffer) Index(idx int64) *Buffer {
-  arr.validate()
-  if arr.cache[idx].isSet() {
-    return &arr.cache[idx]
-  } else {
-    return nil
+func (arr *ArrayBuffer) Index(idx uint) *Buffer {
+  // Lazily load index into cache and return
+  if !arr.cache[idx].isSet() {
+    pkt, err := arr.native.Index(idx)
+    errCheck(err, "array")
+    arr.cache[idx] = wrapBuffer(pkt)
   }
+  return arr.cache[idx]
 }
 
 func (arr *ArrayBuffer) ctype() *cdart.Packet {
@@ -85,7 +92,10 @@ func (arr *ArrayBuffer) ToJSON() string {
   } else if arr.native != nil {
     // We haven't generated our JSON before, but we
     // have a native representation, so do it.
-    arr.json, _ = arr.native.ToJSON()
+    json, err := arr.native.ToJSON()
+    errCheck(err, "array")
+
+    arr.json = json
     return arr.json
   } else {
     // We're a default initialized struct
