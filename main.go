@@ -2,8 +2,12 @@ package main
 
 import "fmt"
 import "github.com/cfretz244/godart/cdart"
+import "github.com/cfretz244/godart/dart"
 
 func main() {
+  dummy := &dart.ObjectBuffer{}
+  fmt.Println(dummy.ToJSON())
+
   pkt, _ := cdart.NewArrayPacket()
   str, _ := cdart.NewStringPacket("hello")
   str2, _ := cdart.NewStringPacket("world")
