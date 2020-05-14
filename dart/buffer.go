@@ -5,6 +5,16 @@ import (
   "github.com/cfretz244/godart/cdart"
 )
 
+const (
+  ObjectType = cdart.ObjectType
+  ArrayType = cdart.ArrayType
+  StringType = cdart.StringType
+  IntegerType = cdart.IntegerType
+  DecimalType = cdart.DecimalType
+  BooleanType = cdart.BooleanType
+  NullType = cdart.NullType
+)
+
 type wrapper interface {
   ctype() *cdart.Packet
 
@@ -25,6 +35,17 @@ type wrapper interface {
 
 type Buffer struct {
   impl wrapper
+}
+
+type BufferIterator struct {
+  native *cdart.Iterator
+  cache *Buffer
+}
+
+var nullBuffer *Buffer
+
+func init() {
+  nullBuffer = &Buffer{&NullBuffer{}}
 }
 
 func errCheck(err error, kind string) {
@@ -104,13 +125,13 @@ func (buf *Buffer) Refcount() uint64 {
 }
 
 func (buf *Buffer) Equal(other *Buffer) bool {
-  raw, oraw := buf.impl.ctype(), other.impl.ctype()
-  if raw == oraw {
+  us, them := buf.impl.ctype(), other.impl.ctype()
+  if us == them {
     return true
-  } else if raw == nil || oraw == nil {
+  } else if us == nil || them == nil {
     return false
   } else {
-    return raw.Equal(oraw)
+    return us.Equal(them)
   }
 }
 
@@ -231,6 +252,12 @@ func (buf *Buffer) AsNull() *NullBuffer {
 }
 
 func (buf *Buffer) isSet() bool {
+  // First make sure the receiver is set
+  if buf == nil {
+    return false
+  }
+
+  // Then check if its implementation is set
   switch buf.impl.(type) {
   case *ObjectBuffer:
     return true
@@ -248,5 +275,31 @@ func (buf *Buffer) isSet() bool {
     return true
   default:
     return false
+  }
+}
+
+func (it *BufferIterator) Next() bool {
+  if it.native != nil {
+    // Moving iterator forward invalidates cache
+    it.cache = nil
+    return it.native.Next()
+  } else {
+    return false
+  }
+}
+
+func (it *BufferIterator) Value() *Buffer {
+  if it.cache != nil {
+    return it.cache
+  } else if it.native != nil {
+    // Load and verify
+    val, err := it.native.Value()
+    errCheck(err, "iterator")
+
+    // Cache and return
+    it.cache = wrapBuffer(val)
+    return it.cache
+  } else {
+    return nullBuffer
   }
 }

@@ -20,6 +20,27 @@ func intFromPacket(pkt *cdart.Packet) *IntegerBuffer {
   return &IntegerBuffer{pkt, "", 0, false}
 }
 
+func (num *IntegerBuffer) Integer() int64 {
+  return num.Value()
+}
+
+func (num *IntegerBuffer) Value() int64 {
+  if num.set {
+    return num.val
+  } else if num.native != nil {
+    // Load and verify
+    val, err := num.native.Integer()
+    errCheck(err, "integer")
+
+    // Cache and return
+    num.val = val
+    num.set = true
+    return num.val
+  } else {
+    return 0
+  }
+}
+
 func (num *IntegerBuffer) ctype() *cdart.Packet {
   return num.native
 }
@@ -66,6 +87,12 @@ func (num *IntegerBuffer) Refcount() uint64 {
 
 func (num *IntegerBuffer) equal(other wrapper) bool {
   return false
+}
+
+func (num *IntegerBuffer) Equal(other *IntegerBuffer) bool {
+  // Calling into native extensions will definitely be more expensive
+  // than the comparison itself, so use the cache if we can
+  return num.Value() == other.Value()
 }
 
 func (num *IntegerBuffer) ToJSON() string {

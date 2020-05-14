@@ -8,21 +8,29 @@ type ObjectBuffer struct {
   native *cdart.Packet
   cache map[string] *Buffer
   json string
+  size uint
 }
 
 func objFromPacket(pkt *cdart.Packet) *ObjectBuffer {
+  // Check invariants
   if !pkt.IsObject() {
     panic("Native packet of unexpected type passed to ObjectBuffer converter")
   } else if !pkt.IsFinalized() {
     panic("Non-finalized object passed to ObjectBuffer converter")
   }
-  return &ObjectBuffer{pkt, make(map[string] *Buffer), ""}
+
+  // Load basic properties and return
+  size, err := pkt.Size()
+  if err != nil {
+    panic("Failed to check native object size in ObjectBuffer converter")
+  }
+  return &ObjectBuffer{pkt, make(map[string] *Buffer), "", size}
 }
 
 func (obj *ObjectBuffer) Field(key string) *Buffer {
   // Short-circuit if we haven't been properly initialized
   if obj.native == nil {
-    return nil
+    return nullBuffer
   }
 
   // Lazily load field into cache and return
@@ -36,8 +44,36 @@ func (obj *ObjectBuffer) Field(key string) *Buffer {
   return obj.cache[key]
 }
 
+func (obj *ObjectBuffer) Iterator() *BufferIterator {
+  it := &BufferIterator{}
+
+  // Load the iterator if we've been initialized
+  if obj.native != nil {
+    tmp, err := cdart.NewIterator(obj.native)
+    errCheck(err, "iterator")
+    it.native = tmp
+  }
+  return it
+}
+
+func (obj *ObjectBuffer) KeyIterator() *BufferIterator {
+  it := &BufferIterator{}
+
+  // Load the iterator if we've been initialized
+  if obj.native != nil {
+    tmp, err := cdart.NewKeyIterator(obj.native)
+    errCheck(err, "iterator")
+    it.native = tmp
+  }
+  return it
+}
+
 func (obj *ObjectBuffer) ctype() *cdart.Packet {
   return obj.native
+}
+
+func (obj *ObjectBuffer) Size() uint {
+  return obj.size
 }
 
 func (obj *ObjectBuffer) IsObject() bool {
@@ -81,6 +117,20 @@ func (obj *ObjectBuffer) Refcount() uint64 {
     return 0
   } else {
     return obj.native.Refcount()
+  }
+}
+
+func (obj *ObjectBuffer) Equal(other *ObjectBuffer) bool {
+  // Recursively checking equality in Go would be slow,
+  // but in C this operation is literally a memcmp,
+  // so hand off to extensions unconditionally
+  us, them := obj.ctype(), other.ctype()
+  if us == them {
+    return true
+  } else if us == nil || them == nil {
+    return false
+  } else {
+    return us.Equal(them)
   }
 }
 

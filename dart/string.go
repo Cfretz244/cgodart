@@ -19,6 +19,27 @@ func strFromPacket(pkt *cdart.Packet) *StringBuffer {
   return &StringBuffer{pkt, "", "", false}
 }
 
+func (str *StringBuffer) String() string {
+  return str.Value()
+}
+
+func (str *StringBuffer) Value() string {
+  if str.set {
+    return str.val
+  } else if str.native != nil {
+    // Load and verify
+    val, err := str.native.String()
+    errCheck(err, "string")
+
+    // Cache and return
+    str.val = val
+    str.set = true
+    return str.val
+  } else {
+    return ""
+  }
+}
+
 func (str *StringBuffer) ctype() *cdart.Packet {
   return str.native
 }
@@ -63,8 +84,10 @@ func (str *StringBuffer) Refcount() uint64 {
   return str.native.Refcount()
 }
 
-func (str *StringBuffer) equal(other wrapper) bool {
-  return false
+func (str *StringBuffer) Equal(other *StringBuffer) bool {
+  // Calling into native extensions will likely be more expensive
+  // than the string comparison itself, so use the cache if we can
+  return str.Value() == other.Value()
 }
 
 func (str *StringBuffer) ToJSON() string {

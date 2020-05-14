@@ -19,6 +19,27 @@ func boolFromPacket(pkt *cdart.Packet) *BooleanBuffer {
   return &BooleanBuffer{pkt, "", false, false}
 }
 
+func (num *BooleanBuffer) Boolean() bool {
+  return num.Value()
+}
+
+func (num *BooleanBuffer) Value() bool {
+  if num.set {
+    return num.val
+  } else if num.native != nil {
+    // Load and verify
+    val, err := num.native.Boolean()
+    errCheck(err, "boolean")
+
+    // Cache and return
+    num.val = val
+    num.set = true
+    return num.val
+  } else {
+    return false
+  }
+}
+
 func (num *BooleanBuffer) ctype() *cdart.Packet {
   return num.native
 }
@@ -65,6 +86,12 @@ func (num *BooleanBuffer) Refcount() uint64 {
 
 func (num *BooleanBuffer) equal(other wrapper) bool {
   return false
+}
+
+func (num *BooleanBuffer) Equal(other *BooleanBuffer) bool {
+  // Calling into native extensions will definitely be more expensive
+  // than the comparison itself, so use the cache if we can
+  return num.Value() == other.Value()
 }
 
 func (num *BooleanBuffer) ToJSON() string {

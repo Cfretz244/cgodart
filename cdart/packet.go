@@ -154,6 +154,14 @@ func maybeErrReg(pkt *Packet, err error) (*Packet, error) {
   return pkt, err
 }
 
+// Dart's C API exposes error strings via a thread-local variable
+// (I never foresaw this being an issue)
+// In go, many goroutines can execute on the same OS thread,
+// causinig problems for our TLS strings.
+// We need to ensure exclusive usage of our OS thread before making
+// the native call to ensure we load the right error string.
+// Calls through cgo already lock the OS thread anyways, so this
+// shouldn't introduce much additional overhead
 func withTLS(impl func () C.dart_err_t) error {
   var err error
   runtime.LockOSThread()
@@ -349,7 +357,7 @@ func (pkt *Packet) Refcount() uint64 {
   return uint64(C.dart_refcount(pkt.rawPtr()))
 }
 
-func (pkt *Packet) Size() (int, error) {
+func (pkt *Packet) Size() (uint, error) {
   pkt.maybeBail()
 
   var size C.size_t
@@ -366,7 +374,7 @@ func (pkt *Packet) Size() (int, error) {
   if err != nil {
     size = 0
   }
-  return int(size), err
+  return uint(size), err
 }
 
 func (pkt *Packet) Clear() error {
@@ -479,6 +487,7 @@ func (it *Iterator) Next() bool {
 
 func (it *Iterator) Value() (*Packet, error) {
   it.maybeBail()
+  it.initialCheck = false
 
   pkt := &Packet{}
   err := withTLS(func () C.dart_err_t {

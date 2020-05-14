@@ -20,6 +20,27 @@ func dcmFromPacket(pkt *cdart.Packet) *DecimalBuffer {
   return &DecimalBuffer{pkt, "", 0.0, false}
 }
 
+func (num *DecimalBuffer) Decimal() float64 {
+  return num.Value()
+}
+
+func (num *DecimalBuffer) Value() float64 {
+  if num.set {
+    return num.val
+  } else if num.native != nil {
+    // Load and verify
+    val, err := num.native.Decimal()
+    errCheck(err, "decimal")
+
+    // Cache and return
+    num.val = val
+    num.set = true
+    return num.val
+  } else {
+    return 0.0
+  }
+}
+
 func (num *DecimalBuffer) ctype() *cdart.Packet {
   return num.native
 }
@@ -66,6 +87,12 @@ func (num *DecimalBuffer) Refcount() uint64 {
 
 func (num *DecimalBuffer) equal(other wrapper) bool {
   return false
+}
+
+func (num *DecimalBuffer) Equal(other *DecimalBuffer) bool {
+  // Calling into native extensions will definitely be more expensive
+  // than the comparison itself, so use the cache if we can
+  return num.Value() == other.Value()
 }
 
 func (num *DecimalBuffer) ToJSON() string {

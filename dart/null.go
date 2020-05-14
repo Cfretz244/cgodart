@@ -57,8 +57,8 @@ func (num *NullBuffer) Refcount() uint64 {
   return 0
 }
 
-func (num *NullBuffer) equal(other wrapper) bool {
-  return false
+func (num *NullBuffer) Equal(other *NullBuffer) bool {
+  return true
 }
 
 func (num *NullBuffer) ToJSON() string {
