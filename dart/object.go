@@ -39,7 +39,7 @@ func (obj *ObjectBuffer) Field(key string) *Buffer {
     errCheck(err, "object")
     obj.cache[key] = wrapBuffer(pkt)
   } else if !obj.cache[key].isSet() {
-    return nil
+    return nullBuffer
   }
   return obj.cache[key]
 }

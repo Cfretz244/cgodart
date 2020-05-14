@@ -8,6 +8,7 @@ type ArrayBuffer struct {
   native *cdart.Packet
   cache []*Buffer
   json string
+  size uint
 }
 
 func arrFromPacket(pkt *cdart.Packet) *ArrayBuffer {
@@ -19,10 +20,15 @@ func arrFromPacket(pkt *cdart.Packet) *ArrayBuffer {
   }
   size, err := pkt.Size()
   errCheck(err, "array")
-  return &ArrayBuffer{pkt, make([]*Buffer, size), ""}
+  return &ArrayBuffer{pkt, make([]*Buffer, size), "", size}
 }
 
 func (arr *ArrayBuffer) Index(idx uint) *Buffer {
+  // Short-circuit if we haven't been properly initialized
+  if arr.native == nil || int(idx) >= len(arr.cache) {
+    return nullBuffer
+  }
+
   // Lazily load index into cache and return
   if !arr.cache[idx].isSet() {
     pkt, err := arr.native.Index(idx)
@@ -32,8 +38,24 @@ func (arr *ArrayBuffer) Index(idx uint) *Buffer {
   return arr.cache[idx]
 }
 
+func (arr *ArrayBuffer) Iterator() *BufferIterator {
+  it := &BufferIterator{}
+  
+  // Load the iterator if we've been initialized
+  if arr.native != nil {
+    tmp, err := cdart.NewIterator(arr.native)
+    errCheck(err, "iterator")
+    it.native = tmp
+  }
+  return it
+}
+
 func (arr *ArrayBuffer) ctype() *cdart.Packet {
   return arr.native
+}
+
+func (arr *ArrayBuffer) Size() uint {
+  return arr.size
 }
 
 func (arr *ArrayBuffer) IsObject() bool {
@@ -80,8 +102,18 @@ func (arr *ArrayBuffer) Refcount() uint64 {
   }
 }
 
-func (arr *ArrayBuffer) equal(other wrapper) bool {
-  return false
+func (arr *ArrayBuffer) Equal(other *ArrayBuffer) bool {
+  // Recursively checking equality in Go would be slow,
+  // but in C this operation is literally a memcmp,
+  // so hand off to extensions unconditionally
+  us, them := arr.ctype(), other.ctype()
+  if us == them {
+    return true
+  } else if us == nil || them == nil {
+    return false
+  } else {
+    return us.Equal(them)
+  }
 }
 
 func (arr *ArrayBuffer) ToJSON() string {
