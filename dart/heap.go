@@ -7,7 +7,14 @@ type Heap struct {
 }
 
 type HeapIterator struct {
-  elems chan Heap
+  val *Heap
+  impl func () *Heap
+}
+
+var nullHeap *Heap
+
+func init() {
+  nullHeap = &Heap{&NullHeap{}}
 }
 
 func (pkt *Heap) IsObject() bool {
@@ -58,3 +65,19 @@ func (pkt *Heap) ToJSON() string {
   return pkt.impl.ToJSON()
 }
 
+func (it *HeapIterator) Next() bool {
+  if it.impl != nil {
+    it.val = it.impl()
+    return it.val != nil
+  } else {
+    return false
+  }
+}
+
+func (it *HeapIterator) Value() *Heap {
+  if it.val != nil {
+    return it.val
+  } else {
+    return nullHeap
+  }
+}

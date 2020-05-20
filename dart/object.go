@@ -33,6 +33,25 @@ func objFromPacket(pkt *cdart.Packet) *ObjectBuffer {
   return &ObjectBuffer{pkt, make(map[string] *Buffer), "", size}
 }
 
+func (obj *ObjectHeap) lazyUp() {
+  if obj.contents == nil {
+    obj.contents = make(map[string] *Heap)
+  }
+}
+
+func (obj *ObjectHeap) Field(key string) *Heap {
+  if obj.contents == nil {
+    return nullHeap
+  }
+
+  // Return it if we got it
+  if val := obj.contents[key]; val != nil {
+    return val
+  } else {
+    return nullHeap
+  }
+}
+
 func (obj *ObjectBuffer) Field(key string) *Buffer {
   // Short-circuit if we haven't been properly initialized
   if obj.native == nil {
@@ -48,6 +67,106 @@ func (obj *ObjectBuffer) Field(key string) *Buffer {
     return nullBuffer
   }
   return obj.cache[key]
+}
+
+func (obj *ObjectHeap) InsertField(key string, val *Heap) {
+  // Lazily initialize
+  obj.lazyUp()
+
+  // Update
+  obj.contents[key] = val
+}
+
+func (obj *ObjectHeap) InsertStringField(key, val string) {
+  // Lazily initialize
+  obj.lazyUp()
+
+  // Update
+  obj.contents[key] = &Heap{&StringHeap{val}}
+}
+
+func (obj *ObjectHeap) InsertIntegerField(key string, val int64) {
+  // Lazily Initialize
+  obj.lazyUp()
+
+  // Update
+  obj.contents[key] = &Heap{&IntegerHeap{val}}
+}
+
+func (obj *ObjectHeap) InsertDecimalField(key string, val float64) {
+  // Lazily Initialize
+  obj.lazyUp()
+
+  // Update
+  obj.contents[key] = &Heap{&DecimalHeap{val}}
+}
+
+func (obj *ObjectHeap) InsertBooleanField(key string, val bool) {
+  // Lazily Initialize
+  obj.lazyUp()
+
+  // Update
+  obj.contents[key] = &Heap{&BooleanHeap{val}}
+}
+
+func (obj *ObjectHeap) InsertNullField(key string) {
+  // Lazily Initialize
+  obj.lazyUp()
+
+  // Update
+  obj.contents[key] = &Heap{&NullHeap{}}
+}
+
+func (obj *ObjectHeap) Iterator() *HeapIterator {
+  if obj.contents == nil {
+    return &HeapIterator{}
+  }
+
+  // We have to construct an intermediate slice
+  // Go makes it so hard to implement iterators
+  store := make([]*Heap, obj.Size())[:0]
+  for _, val := range obj.contents {
+    store = append(store, val)
+  }
+
+  // Create our implementation closure
+  var i uint = 0
+  impl := func () *Heap {
+    if i < obj.Size() {
+      tmp := store[i]
+      i++
+      return tmp
+    } else {
+      return nil
+    }
+  }
+  return &HeapIterator{nil, impl}
+}
+
+func (obj *ObjectHeap) KeyIterator() *HeapIterator {
+  if obj.contents == nil {
+    return &HeapIterator{}
+  }
+
+  // We have to construct an intermediate slice
+  // Go makes it so hard to implement iterators
+  store := make([]*Heap, obj.Size())[:0]
+  for key, _ := range obj.contents {
+    store = append(store, &Heap{&StringHeap{key}})
+  }
+
+  // Create our implementation closure
+  var i uint = 0
+  impl := func () *Heap {
+    if i < obj.Size() {
+      tmp := store[i]
+      i++
+      return tmp
+    } else {
+      return nil
+    }
+  }
+  return &HeapIterator{nil, impl}
 }
 
 func (obj *ObjectBuffer) Iterator() *BufferIterator {

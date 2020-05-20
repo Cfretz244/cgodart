@@ -28,6 +28,48 @@ func arrFromPacket(pkt *cdart.Packet) *ArrayBuffer {
   return &ArrayBuffer{pkt, make([]*Buffer, size), "", size}
 }
 
+func (arr *ArrayHeap) grow(idx uint) {
+  // Check if we need to do anything
+  max := uint(cap(arr.contents))
+  if int(idx) < len(arr.contents) {
+    return
+  }
+
+  // Check if we need to reallocate
+  if idx + 1 > max {
+    var size uint = 0
+    if idx + 1 > max * 2 {
+      size = idx + 1
+    } else {
+      size = max * 2
+    }
+    tmp := make([]*Heap, size)
+    copy(tmp, arr.contents)
+    arr.contents = tmp
+  } else {
+    arr.contents = arr.contents[:idx + 1]
+  }
+}
+
+func (arr *ArrayHeap) pushUp(idx uint) {
+  end := len(arr.contents)
+  for end > int(idx) {
+    if end == len(arr.contents) {
+      arr.contents = append(arr.contents, arr.contents[end - 1])
+    } else {
+      arr.contents[end] = arr.contents[end - 1]
+    }
+    end--
+  }
+}
+
+func (arr *ArrayHeap) Index(idx uint) *Heap {
+  if arr.contents == nil || int(idx) >= len(arr.contents) {
+    return nullHeap
+  }
+  return arr.contents[idx]
+}
+
 func (arr *ArrayBuffer) Index(idx uint) *Buffer {
   // Short-circuit if we haven't been properly initialized
   if arr.native == nil || int(idx) >= len(arr.cache) {
@@ -41,6 +83,143 @@ func (arr *ArrayBuffer) Index(idx uint) *Buffer {
     arr.cache[idx] = wrapBuffer(pkt)
   }
   return arr.cache[idx]
+}
+
+func (arr *ArrayHeap) InsertIndex(idx uint, val *Heap) {
+  // Shift everything above
+  arr.pushUp(idx)
+
+  // Length check
+  arr.grow(idx)
+
+  // Update it
+  arr.contents[idx] = val
+}
+
+func (arr *ArrayHeap) InsertStringIndex(idx uint, val string) {
+  // Shift everything above
+  arr.pushUp(idx)
+
+  // Length check
+  arr.grow(idx)
+
+  // Update it
+  arr.contents[idx] = &Heap{&StringHeap{val}}
+}
+
+func (arr *ArrayHeap) InsertIntegerIndex(idx uint, val int64) {
+  // Shift everything above
+  arr.pushUp(idx)
+
+  // Length check
+  arr.grow(idx)
+
+  // Update it
+  arr.contents[idx] = &Heap{&IntegerHeap{val}}
+}
+
+func (arr *ArrayHeap) InsertDecimalIndex(idx uint, val float64) {
+  // Shift everything above
+  arr.pushUp(idx)
+
+  // Length check
+  arr.grow(idx)
+
+  // Update it
+  arr.contents[idx] = &Heap{&DecimalHeap{val}}
+}
+
+func (arr *ArrayHeap) InsertBooleanIndex(idx uint, val bool) {
+  // Shift everything above
+  arr.pushUp(idx)
+
+  // Length check
+  arr.grow(idx)
+
+  // Update it
+  arr.contents[idx] = &Heap{&BooleanHeap{val}}
+}
+
+func (arr *ArrayHeap) InsertNullIndex(idx uint) {
+  // Shift everything above
+  arr.pushUp(idx)
+
+  // Length check
+  arr.grow(idx)
+
+  // Update it
+  arr.contents[idx] = &Heap{&NullHeap{}}
+}
+
+func (arr *ArrayHeap) SetIndex(idx uint, val *Heap) {
+  // Length check
+  arr.grow(idx)
+
+  // Update it
+  arr.contents[idx] = val
+}
+
+func (arr *ArrayHeap) SetStringIndex(idx uint, val string) {
+  // Length check
+  arr.grow(idx)
+
+  // Update it
+  arr.contents[idx] = &Heap{&StringHeap{val}}
+}
+
+func (arr *ArrayHeap) SetIntegerIndex(idx uint, val int64) {
+  // Length check
+  arr.grow(idx)
+
+  // Update it
+  arr.contents[idx] = &Heap{&IntegerHeap{val}}
+}
+
+func (arr *ArrayHeap) SetDecimalIndex(idx uint, val float64) {
+  // Length check
+  arr.grow(idx)
+
+  // Update it
+  arr.contents[idx] = &Heap{&DecimalHeap{val}}
+}
+
+func (arr *ArrayHeap) SetBooleanIndex(idx uint, val bool) {
+  // Length check
+  arr.grow(idx)
+
+  // Update it
+  arr.contents[idx] = &Heap{&BooleanHeap{val}}
+}
+
+func (arr *ArrayHeap) SetNullIndex(idx uint) {
+  // Length check
+  arr.grow(idx)
+
+  // Update it
+  arr.contents[idx] = &Heap{&NullHeap{}}
+}
+
+func (arr *ArrayHeap) Iterator() *HeapIterator {
+  if arr.contents == nil {
+    return &HeapIterator{}
+  }
+
+  // Create our implementation closure
+  var i uint = 0
+  impl := func () *Heap {
+    if i < arr.Size() {
+      tmp := arr.contents[i]
+      i++
+      if tmp != nil {
+        return tmp
+      } else {
+        return nullHeap
+      }
+    } else {
+      return nil
+    }
+  }
+  return &HeapIterator{nil, impl}
 }
 
 func (arr *ArrayBuffer) Iterator() *BufferIterator {
@@ -194,7 +373,12 @@ func (arr *ArrayHeap) toJSON(out *strings.Builder) {
       if !first {
         out.WriteRune(',')
       }
-      val.toJSON(out)
+
+      if val == nil {
+        out.WriteString("null")
+      } else {
+        val.toJSON(out)
+      }
       first = false
     }
     out.WriteRune(']')
