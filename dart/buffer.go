@@ -2,36 +2,9 @@ package dart
 
 import (
   "errors"
+  "strings"
   "github.com/cfretz244/godart/cdart"
 )
-
-const (
-  ObjectType = cdart.ObjectType
-  ArrayType = cdart.ArrayType
-  StringType = cdart.StringType
-  IntegerType = cdart.IntegerType
-  DecimalType = cdart.DecimalType
-  BooleanType = cdart.BooleanType
-  NullType = cdart.NullType
-)
-
-type wrapper interface {
-  ctype() *cdart.Packet
-
-  IsObject() bool
-  IsArray() bool
-  IsString() bool
-  IsInteger() bool
-  IsDecimal() bool
-  IsBoolean() bool
-  IsNull() bool
-  IsFinalized() bool
-
-  GetType() int
-  Refcount() uint64
-
-  ToJSON() string
-}
 
 type Buffer struct {
   impl wrapper
@@ -133,6 +106,10 @@ func (buf *Buffer) Equal(other *Buffer) bool {
   } else {
     return us.Equal(them)
   }
+}
+
+func (buf *Buffer) toJSON(out *strings.Builder) {
+  buf.impl.toJSON(out)
 }
 
 func (buf *Buffer) ToJSON() string {

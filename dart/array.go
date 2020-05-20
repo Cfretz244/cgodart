@@ -1,8 +1,13 @@
 package dart
 
 import (
+  "strings"
   "github.com/cfretz244/godart/cdart"
 )
+
+type ArrayHeap struct {
+  contents []*Heap
+}
 
 type ArrayBuffer struct {
   native *cdart.Packet
@@ -48,6 +53,68 @@ func (arr *ArrayBuffer) Iterator() *BufferIterator {
     it.native = tmp
   }
   return it
+}
+
+func (arr *ArrayHeap) ctype() *cdart.Packet {
+  return nil
+}
+
+func (arr *ArrayHeap) Size() uint {
+  return uint(len(arr.contents))
+}
+
+func (arr *ArrayHeap) IsObject() bool {
+  return false
+}
+
+func (arr *ArrayHeap) IsArray() bool {
+  return true
+}
+
+func (arr *ArrayHeap) IsString() bool {
+  return false
+}
+
+func (arr *ArrayHeap) IsInteger() bool {
+  return false
+}
+
+func (arr *ArrayHeap) IsDecimal() bool {
+  return false
+}
+
+func (arr *ArrayHeap) IsBoolean() bool {
+  return false
+}
+
+func (arr *ArrayHeap) IsNull() bool {
+  return false
+}
+
+func (arr *ArrayHeap) IsFinalized() bool {
+  return false
+}
+
+func (arr *ArrayHeap) GetType() int {
+  return cdart.ArrayType
+}
+
+func (arr *ArrayHeap) Refcount() uint64 {
+  return 1
+}
+
+func (arr *ArrayHeap) Equal(other *ArrayHeap) bool {
+  // Recursively checking equality in Go would be slow,
+  // but in C this operation is literally a memcmp,
+  // so hand off to extensions unconditionally
+  us, them := arr.ctype(), other.ctype()
+  if us == them {
+    return true
+  } else if us == nil || them == nil {
+    return false
+  } else {
+    return us.Equal(them)
+  }
 }
 
 func (arr *ArrayBuffer) ctype() *cdart.Packet {
@@ -114,6 +181,36 @@ func (arr *ArrayBuffer) Equal(other *ArrayBuffer) bool {
   } else {
     return us.Equal(them)
   }
+}
+
+func (arr *ArrayHeap) toJSON(out *strings.Builder) {
+  if arr.contents != nil {
+    // Get a string builder
+    out.WriteRune('[')
+
+    // Add in all our elements
+    first := true
+    for _, val := range arr.contents {
+      if !first {
+        out.WriteRune(',')
+      }
+      val.toJSON(out)
+      first = false
+    }
+    out.WriteRune(']')
+  } else {
+    out.WriteString("[]")
+  }
+}
+
+func (arr *ArrayHeap) ToJSON() string {
+  var builder strings.Builder
+  arr.toJSON(&builder)
+  return builder.String()
+}
+
+func (arr *ArrayBuffer) toJSON(out *strings.Builder) {
+  out.WriteString(arr.ToJSON())
 }
 
 func (arr *ArrayBuffer) ToJSON() string {

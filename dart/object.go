@@ -1,8 +1,14 @@
 package dart
 
 import (
+  "fmt"
+  "strings"
   "github.com/cfretz244/godart/cdart"
 )
+
+type ObjectHeap struct {
+  contents map[string] *Heap
+}
 
 type ObjectBuffer struct {
   native *cdart.Packet
@@ -68,12 +74,60 @@ func (obj *ObjectBuffer) KeyIterator() *BufferIterator {
   return it
 }
 
-func (obj *ObjectBuffer) ctype() *cdart.Packet {
-  return obj.native
+func (obj *ObjectHeap) ctype() *cdart.Packet {
+  return nil
+}
+
+func (obj *ObjectHeap) Size() uint {
+  return uint(len(obj.contents))
+}
+
+func (obj *ObjectHeap) IsObject() bool {
+  return true
+}
+
+func (obj *ObjectHeap) IsArray() bool {
+  return false
+}
+
+func (obj *ObjectHeap) IsString() bool {
+  return false
+}
+
+func (obj *ObjectHeap) IsInteger() bool {
+  return false
+}
+
+func (obj *ObjectHeap) IsDecimal() bool {
+  return false
+}
+
+func (obj *ObjectHeap) IsBoolean() bool {
+  return false
+}
+
+func (obj *ObjectHeap) IsNull() bool {
+  return false
+}
+
+func (obj *ObjectHeap) IsFinalized() bool {
+  return false
+}
+
+func (obj *ObjectHeap) GetType() int {
+  return cdart.ObjectType
+}
+
+func (obj *ObjectHeap) Refcount() uint64 {
+  return 1
 }
 
 func (obj *ObjectBuffer) Size() uint {
   return obj.size
+}
+
+func (obj *ObjectBuffer) ctype() *cdart.Packet {
+  return obj.native
 }
 
 func (obj *ObjectBuffer) IsObject() bool {
@@ -132,6 +186,37 @@ func (obj *ObjectBuffer) Equal(other *ObjectBuffer) bool {
   } else {
     return us.Equal(them)
   }
+}
+
+func (obj *ObjectHeap) toJSON(out *strings.Builder) {
+  if obj.contents != nil {
+    // Get a string builder
+    out.WriteRune('{')
+
+    // Add in all of our key-value pairs
+    first := true
+    for k, v := range obj.contents {
+      if !first {
+        out.WriteRune(',')
+      }
+      fmt.Fprintf(out, "\"%s\":", k)
+      v.toJSON(out)
+      first = false
+    }
+    out.WriteRune('}')
+  } else {
+    out.WriteString("{}")
+  }
+}
+
+func (obj *ObjectHeap) ToJSON() string {
+  var builder strings.Builder
+  obj.toJSON(&builder)
+  return builder.String()
+}
+
+func (obj *ObjectBuffer) toJSON(out *strings.Builder) {
+  out.WriteString(obj.ToJSON())
 }
 
 func (obj *ObjectBuffer) ToJSON() string {

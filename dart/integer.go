@@ -1,8 +1,14 @@
 package dart
 
 import (
+  "fmt"
+  "strings"
   "github.com/cfretz244/godart/cdart"
 )
+
+type IntegerHeap struct {
+  contents int64
+}
 
 type IntegerBuffer struct {
   native *cdart.Packet
@@ -20,8 +26,16 @@ func intFromPacket(pkt *cdart.Packet) *IntegerBuffer {
   return &IntegerBuffer{pkt, "", 0, false}
 }
 
+func (num *IntegerHeap) Integer() int64 {
+  return num.Value()
+}
+
 func (num *IntegerBuffer) Integer() int64 {
   return num.Value()
+}
+
+func (num *IntegerHeap) Value() int64 {
+  return num.contents
 }
 
 func (num *IntegerBuffer) Value() int64 {
@@ -39,6 +53,50 @@ func (num *IntegerBuffer) Value() int64 {
   } else {
     return 0
   }
+}
+
+func (num *IntegerHeap) ctype() *cdart.Packet {
+  return nil
+}
+
+func (num *IntegerHeap) IsObject() bool {
+  return false
+}
+
+func (num *IntegerHeap) IsArray() bool {
+  return false
+}
+
+func (num *IntegerHeap) IsString() bool {
+  return false
+}
+
+func (num *IntegerHeap) IsInteger() bool {
+  return true
+}
+
+func (num *IntegerHeap) IsDecimal() bool {
+  return false
+}
+
+func (num *IntegerHeap) IsBoolean() bool {
+  return false
+}
+
+func (num *IntegerHeap) IsNull() bool {
+  return false
+}
+
+func (num *IntegerHeap) IsFinalized() bool {
+  return false
+}
+
+func (num *IntegerHeap) GetType() int {
+  return cdart.IntegerType
+}
+
+func (num *IntegerHeap) Refcount() uint64 {
+  return 1
 }
 
 func (num *IntegerBuffer) ctype() *cdart.Packet {
@@ -85,14 +143,24 @@ func (num *IntegerBuffer) Refcount() uint64 {
   return num.native.Refcount()
 }
 
-func (num *IntegerBuffer) equal(other wrapper) bool {
-  return false
-}
-
 func (num *IntegerBuffer) Equal(other *IntegerBuffer) bool {
   // Calling into native extensions will definitely be more expensive
   // than the comparison itself, so use the cache if we can
   return num.Value() == other.Value()
+}
+
+func (num *IntegerHeap) toJSON(out *strings.Builder) {
+  fmt.Fprintf(out, "%d", num.Value())
+}
+
+func (num *IntegerHeap) ToJSON() string {
+  var builder strings.Builder
+  num.toJSON(&builder)
+  return builder.String()
+}
+
+func (num *IntegerBuffer) toJSON(out *strings.Builder) {
+  out.WriteString(num.ToJSON())
 }
 
 func (num *IntegerBuffer) ToJSON() string {

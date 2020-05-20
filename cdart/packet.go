@@ -165,11 +165,11 @@ func maybeErrReg(pkt *Packet, err error) (*Packet, error) {
 func withTLS(impl func () C.dart_err_t) error {
   var err error
   runtime.LockOSThread()
+  defer runtime.UnlockOSThread()
   ret := impl()
   if !isOK(ret) {
     err = grabError()
   }
-  runtime.UnlockOSThread()
   return err
 }
 

@@ -148,6 +148,19 @@ func TestIterateArray(t *testing.T) {
     }
     count++
   }
+
+  // Reset it
+  count = 1
+  it = arr.Iterator()
+  if !elems[0].Equal(it.Value()) {
+    t.Error("Expected specific object value")
+  }
+  for it.Next() {
+    if !elems[count].Equal(it.Value()) {
+      t.Error("Expected specific object value")
+    }
+    count++
+  }
 }
 
 func TestArrayInitialization(t *testing.T) {

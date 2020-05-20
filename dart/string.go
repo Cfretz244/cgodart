@@ -1,8 +1,13 @@
 package dart
 
 import (
+  "strings"
   "github.com/cfretz244/godart/cdart"
 )
+
+type StringHeap struct {
+  contents string
+}
 
 type StringBuffer struct {
   native *cdart.Packet
@@ -19,8 +24,16 @@ func strFromPacket(pkt *cdart.Packet) *StringBuffer {
   return &StringBuffer{pkt, "", "", false}
 }
 
+func (str *StringHeap) String() string {
+  return str.Value()
+}
+
 func (str *StringBuffer) String() string {
   return str.Value()
+}
+
+func (str *StringHeap) Value() string {
+  return str.contents
 }
 
 func (str *StringBuffer) Value() string {
@@ -38,6 +51,58 @@ func (str *StringBuffer) Value() string {
   } else {
     return ""
   }
+}
+
+func (str *StringHeap) ctype() *cdart.Packet {
+  return nil
+}
+
+func (str *StringHeap) Size() uint {
+  return uint(len(str.contents))
+}
+
+func (str *StringHeap) IsObject() bool {
+  return false
+}
+
+func (str *StringHeap) IsArray() bool {
+  return false
+}
+
+func (str *StringHeap) IsString() bool {
+  return true
+}
+
+func (str *StringHeap) IsInteger() bool {
+  return false
+}
+
+func (str *StringHeap) IsDecimal() bool {
+  return false
+}
+
+func (str *StringHeap) IsBoolean() bool {
+  return false
+}
+
+func (str *StringHeap) IsNull() bool {
+  return false
+}
+
+func (str *StringHeap) IsFinalized() bool {
+  return false
+}
+
+func (str *StringHeap) GetType() int {
+  return cdart.StringType
+}
+
+func (str *StringHeap) Refcount() uint64 {
+  return 1
+}
+
+func (str *StringBuffer) Size() uint {
+  return uint(len(str.Value()))
 }
 
 func (str *StringBuffer) ctype() *cdart.Packet {
@@ -84,10 +149,30 @@ func (str *StringBuffer) Refcount() uint64 {
   return str.native.Refcount()
 }
 
+func (str *StringHeap) Equal(other *StringHeap) bool {
+  return str.contents == other.contents
+}
+
 func (str *StringBuffer) Equal(other *StringBuffer) bool {
   // Calling into native extensions will likely be more expensive
   // than the string comparison itself, so use the cache if we can
   return str.Value() == other.Value()
+}
+
+func (str *StringHeap) toJSON(out *strings.Builder) {
+  out.WriteRune('"')
+  out.WriteString(str.contents)
+  out.WriteRune('"')
+}
+
+func (str *StringHeap) ToJSON() string {
+  var builder strings.Builder
+  str.toJSON(&builder)
+  return builder.String()
+}
+
+func (str *StringBuffer) toJSON(out *strings.Builder) {
+  out.WriteString(str.ToJSON())
 }
 
 func (str *StringBuffer) ToJSON() string {
